@@ -1,9 +1,0 @@
-/**
- * 
- */
-/**
- * @author sunghoon
- *
- */
-module lugbygame {
-}
