@@ -145,9 +145,9 @@ public class _Game {
 		}
 	}
 
-	// MARK waiting time 구현
+	// MARK waiting time apply
 	public static void main(String[] args) {
-		// waiting time 적용할 것!
+		// waiting time �쟻�슜�븷 寃�!
 		_Game game = new _Game();
 		game.run();
 	}
