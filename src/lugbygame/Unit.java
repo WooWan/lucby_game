@@ -20,6 +20,6 @@ public class Unit {
 	}
 
 	public int getDistance(Unit u) {
-		return 0;
+		return (int) Math.sqrt(Math.pow((x - u.x), 2) + Math.pow(y - u.y, 2));
 	}
 }

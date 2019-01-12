@@ -4,7 +4,7 @@ package lugbygame;
 public class Player extends Unit {
 	private int id;
 	private int number;
-	private boolean ballOwner = false;
+	private Ball ball;
 
 	// original stat
 	private int maxStregth;
@@ -30,15 +30,15 @@ public class Player extends Unit {
 		this.maxStamina = stamina = maxStamina;
 	}
 
-	public void getBall() {
-		ballOwner = true;
+	public void getBall(Ball ball) {
+		this.ball = ball;
 	}
 
 	public void move(int dx, int dy) {
 		if (dx != 0)
-			dx /= dx;
+			dx /= Math.abs(dx);
 		if (dy != 0)
-			dy /= dy;
+			dy /= Math.abs(dy);
 		// range check
 		if (x == _Game.WIDTH - 1 && dx == 1) {
 			dx = 0;
@@ -51,7 +51,7 @@ public class Player extends Unit {
 			dy = 0;
 		}
 		// stamina check
-		if (ballOwner && stamina < 6 || stamina < 3) {
+		if (ball != null && stamina < 6 || stamina < 3) {
 			dx = 0;
 			dy = 0;
 		}
@@ -59,7 +59,7 @@ public class Player extends Unit {
 		if (dx == 0 && dy == 0) {// if don't move
 			restore();
 		} else {
-			if (ballOwner) {
+			if (ball != null) {
 				consumeStamina(6);
 			} else {
 				consumeStamina(3);
@@ -88,10 +88,13 @@ public class Player extends Unit {
 		consumeStamina(2);
 	}
 
-	public void loseContending() {
+	public void loseContending(int x, int y) {
 		consumeStamina(5);
-		if (ballOwner)
-			ballOwner = false;
+		if (ball != null)
+			ball = null;
+
+		this.x = x;
+		this.y = y;
 	}
 	// -----------------------------------------------------------------------------------------------------------------------------//
 
@@ -130,7 +133,11 @@ public class Player extends Unit {
 	}
 
 	public int getStrength() {
-		return strength;
+		if (ball != null) {
+			return (int) (0.75 * strength);
+		} else {
+			return strength;
+		}
 	}
 
 	public int getPass() {
@@ -138,6 +145,26 @@ public class Player extends Unit {
 	}
 
 	public boolean isBallOwner() {
-		return ballOwner;
+		return ball != null;
 	}
+
+	public String toString() {
+		if (ball != null) {
+			if (id >= 0 && id < 6) {
+				return "X";
+			} else if (id >= 6 && id < 12) {
+				return "O";
+			}
+			return null;
+		} else {
+			if (id >= 0 && id < 6) {
+
+				return "" + (char) ('a' + number);
+			} else if (id >= 6 && id < 12) {
+				return "" + (char) ('1' + number);
+			}
+			return null;
+		}
+	}
+
 }
