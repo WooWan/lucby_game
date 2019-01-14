@@ -7,6 +7,6 @@ public interface Strategy {
 
 	public default int getRandom(int m, int n) {
 		int d = Math.abs(m - n) + 1;
-		return (int) (Math.random() * d) + 1;
+		return (int) (Math.random() * d) + m;
 	}
 }

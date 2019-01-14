@@ -50,6 +50,7 @@ public class Player extends Unit {
 		} else if (y == 0 && dy == -1) {
 			dy = 0;
 		}
+		
 		// stamina check
 		if (ball != null && stamina < 6 || stamina < 3) {
 			dx = 0;
@@ -96,6 +97,14 @@ public class Player extends Unit {
 		this.x = x;
 		this.y = y;
 	}
+
+	public void throwBall() {// lose ball without consuming stamina
+		if (ball != null) {
+			ball = null;
+		} else {
+			System.out.println("The player doesn't have a ball!!!");
+		}
+	}
 	// -----------------------------------------------------------------------------------------------------------------------------//
 
 	private void consumeStamina(int n) {
@@ -118,14 +127,6 @@ public class Player extends Unit {
 
 	public int getNumber() {
 		return number;
-	}
-
-	public int getX() {
-		return x;
-	}
-
-	public int getY() {
-		return y;
 	}
 
 	public int getStamina() {

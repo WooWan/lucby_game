@@ -15,10 +15,12 @@ public class Status {
 		enemy = new Unit[6];
 	}
 
-	public void setStatus(Unit[] info, int turn) {
+	public void setStatus(Unit[] info, int ballOwner, int turn) {
 		ball = info[0];
 		System.arraycopy(info, 1, mine, 0, 6);
 		System.arraycopy(info, 7, enemy, 0, 6);
+
+		this.ballOwner = ballOwner;
 		
 		this.turn = turn;
 	}

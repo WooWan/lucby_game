@@ -22,4 +22,12 @@ public class Unit {
 	public int getDistance(Unit u) {
 		return (int) Math.sqrt(Math.pow((x - u.x), 2) + Math.pow(y - u.y, 2));
 	}
+	
+	public int getX() {
+		return x;
+	}
+
+	public int getY() {
+		return y;
+	}
 }

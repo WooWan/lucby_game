@@ -1,6 +1,7 @@
 package lugbygame;
 
 import java.util.ArrayList;
+import java.util.Scanner;
 
 //Rule
 
@@ -44,6 +45,7 @@ public class _Game {
 	private int eventWaitTime;
 	private boolean eventTurn;
 	private int nTurn;
+	public static boolean DEBUGMODE = false;
 
 	Strategy teamA;
 	Strategy teamB;
@@ -63,7 +65,7 @@ public class _Game {
 	private Order orderB;
 
 	public _Game() {
-		this(1000, 1000);
+		this(400, 1000);
 	}
 
 	public _Game(int normalWaitTime, int eventWaitTime) {
@@ -88,6 +90,7 @@ public class _Game {
 		// updateScr();
 		printScr();
 		// wait
+		delay(1000);
 		while (true) {
 			nTurn++;
 			clearScr();// clear screen
@@ -97,12 +100,13 @@ public class _Game {
 			// updateScr();// set screen
 			printScr();// print screen with print form
 
-			if (goalCheck() == 1) {// if goal
-				eventTurn = true;
-				initialize(1);
-			} else if (goalCheck() == 2) {
+			int goalCheck = goalCheck();
+			if (goalCheck == 1) {// if goal
 				eventTurn = true;
 				initialize(2);
+			} else if (goalCheck == 2) {
+				eventTurn = true;
+				initialize(1);
 			}
 
 			if (endCheck() == 1) {// if end
@@ -157,8 +161,12 @@ public class _Game {
 			}
 		} else if (starter == 1) {
 			ball = new Ball(playerOfTeamA[2].x, playerOfTeamA[2].y);
+			ballOwner = playerOfTeamA[2];
+			playerOfTeamA[2].getBall(ball);
 		} else if (starter == 2) {
 			ball = new Ball(playerOfTeamB[2].x, playerOfTeamB[2].y);
+			ballOwner = playerOfTeamB[2];
+			playerOfTeamB[2].getBall(ball);
 		}
 
 		for (Player p : players) {
@@ -167,9 +175,19 @@ public class _Game {
 	}
 
 	public void onetick() {
-		statusA.setStatus(generateUnitInfo(false), nTurn);
+		int ballOwner = (this.ballOwner == null ? -1 : this.ballOwner.getId());
+		statusA.setStatus(generateUnitInfo(false), ballOwner, nTurn);
 		teamA.execute(statusA, orderA);
-		statusB.setStatus(generateUnitInfo(true), nTurn);
+
+		int ballOwnerForB;
+		if (ballOwner == -1)
+			ballOwnerForB = -1;
+		else if (ballOwner < 6) {
+			ballOwnerForB = ballOwner + 6;
+		} else {
+			ballOwnerForB = ballOwner - 6;
+		}
+		statusB.setStatus(generateUnitInfo(true), ballOwnerForB, nTurn);
 		teamB.execute(statusB, orderB);
 		// debug
 		// for (int i = 0; i < 6; i++) {
@@ -183,7 +201,7 @@ public class _Game {
 		Unit[] result = new Unit[13];
 
 		if (mirror) {// for team b
-			result[0] = new Unit(ball);
+			result[0] = new Unit(ball, true);
 			for (int i = 1; i < 13; i++) {
 				if (i <= 6) {
 					result[i] = new Unit(playerOfTeamB[i - 1], true);
@@ -266,21 +284,33 @@ public class _Game {
 				screen[wx][wy] = players.get(i);
 			} else {
 				if (players.get(i).isBallOwner()) {// 공 날라감
-					ball.fly2(wx + getRandom(-2, 2), wy + getRandom(-2, 2));
+					int ix, iy;
+					do {
+						ix = wx + getRandom(-3, 3);
+						iy = wy + getRandom(-3, 3);
+					} while ((ix < 0 || ix >= WIDTH || iy < 0 || iy >= HEIGHT) || (screen[ix][iy] != null));
 					ballOwner = null;
 				}
 				// 패배자 날라감
 				int dx = 0, dy = 0;
 				int ix, iy;
+				int count = 0;
 				do {
-					dx = getRandom(-1, 1);
-					dy = getRandom(-1, 1);
+					count++;
+					if (count > 100) {
+						dx = getRandom(-2, 2);
+						dy = getRandom(-2, 2);
+					} else {
+						dx = getRandom(-1, 1);
+						dy = getRandom(-1, 1);
+					}
 					ix = wx + dx;
 					iy = wy + dy;
-				} while ((dx == 0 && dy == 0)// 범위 검사 할 것!
-						|| (screen[ix][iy] != null));
+				} while ((dx == 0 && dy == 0)// 범위 검사 할 것!(벽)
+						|| (ix < 0 || ix >= WIDTH || iy < 0 || iy >= HEIGHT) || (screen[ix][iy] != null));
 				screen[ix][iy] = players.get(i);
-				System.out.println("player " + i + " is intend to go to (" + ix + "," + iy + ")");
+				if (DEBUGMODE)
+					System.out.println("player " + i + " is intend to go to (" + ix + "," + iy + ")");
 				players.get(i).loseContending(ix, iy);// apply stamina, set position, ballowner false
 
 			}
@@ -291,18 +321,100 @@ public class _Game {
 	private void passCheck() {
 		if (ballOwner != null) {
 			Player passtarget = null;
-			if (ballOwner.getId() >= 0 && ballOwner.getId() < 6)// a team case
+			if ((ballOwner.getId() >= 0 && ballOwner.getId() < 6) && orderA.passto >= 0
+					&& ballOwner != playerOfTeamA[orderA.passto])// a team case
 				passtarget = playerOfTeamA[orderA.passto];
-			else// b team case
+			else if ((ballOwner.getId() >= 6 && ballOwner.getId() < 12) && orderB.passto >= 0
+					&& ballOwner != playerOfTeamB[orderB.passto])// b team case
 				passtarget = playerOfTeamB[orderB.passto];
-			
+			else {
+				return;
+			}
+
+			if (DEBUGMODE)
+				System.out.println("pass from " + ballOwner.getId() + " to " + passtarget.getId());
+
 			// ballOwner -> passtarget
-			//기울기와 y절편
-			double m = 0;
-			double n = 0;
-			
-			//경로상에 플레이어 확인
-			//
+			// 경로상에 플레이어 확인
+			// 기울기와 y절편 (y = mx + n)
+			double m, n;
+			if (ballOwner.getX() == passtarget.getX()) {
+				// 직선의 방정식이 | 인경우
+				int yV = (passtarget.getY() - ballOwner.getY()) / Math.abs(passtarget.getY() - ballOwner.getY());
+				for (int i = ballOwner.getY() + yV; i < passtarget.getY() - yV; i += yV) {
+					if (screen[ballOwner.getX()][i] != null) {
+						// intercepted by screen[ballOwner.x][i]
+						System.out.println("intercepted!!!");
+						ballOwner.throwBall();
+						Player interceptPlayer = (Player) screen[ballOwner.getX()][i];
+						interceptPlayer.getBall(ball);
+						ballOwner = interceptPlayer;
+						return;
+					}
+				}
+			} else {
+				m = (ballOwner.getY() - passtarget.getY()) / (ballOwner.getX() - passtarget.getX());
+				n = ballOwner.getY() - m * ballOwner.getX();
+
+				int xV = (passtarget.getX() - ballOwner.getX()) / Math.abs(passtarget.getX() - ballOwner.getX());
+
+				if (DEBUGMODE)
+					System.out.println("m:" + m + ",n:" + n);
+				for (int i = ballOwner.getX() + xV; i != passtarget.getX() - xV; i += xV) {
+					int fi = (int) (m * i + n + 0.4);
+					if (DEBUGMODE) {
+						System.out.println("src : (" + ballOwner.getX() + "," + ballOwner.getY() + ") dest : ("
+								+ passtarget.getX() + "," + passtarget.getY() + ")");
+						System.out.println("---" + i + "," + fi + "---");
+					}
+					if (screen[i][fi] != null) {
+						// intercepted by screen[i][fi]
+						System.out.println("intercepted!!!");
+						ballOwner.throwBall();
+						Player interceptPlayer = (Player) screen[i][fi];
+						interceptPlayer.getBall(ball);
+						ballOwner = interceptPlayer;
+						return;
+					}
+				}
+			}
+
+			// 거리에 다라 패스 성공률 적용
+			// 일단 인터셉트는 안당함
+			int d = ballOwner.getDistance(passtarget);
+			if (d > 5) {
+				int r = getRandom(0, ballOwner.getPass() + d * 5 - 1);
+				if (r < ballOwner.getPass()) {
+					// pass success
+					ballOwner.throwBall();
+					passtarget.getBall(ball);
+					ballOwner = passtarget;
+				} else {
+					// pass fail
+					ballOwner.throwBall();
+//					passtarget x,y로 공의 위치 재설정
+					int ix, iy;
+					do {
+						ix = passtarget.getX() + getRandom(-2, 2);
+						iy = passtarget.getY() + getRandom(-2, 2);
+					} while ((ix == passtarget.getX() && iy == passtarget.getY())
+							|| (ix < 0 || ix >= WIDTH || iy < 0 || iy >= HEIGHT));
+					ball.fly2(ix, iy);
+					ballOwner = null;
+				}
+			} else {
+				ballOwner.throwBall();
+				passtarget.getBall(ball);
+				ballOwner = passtarget;
+			}
+//			// 패스 성공 시
+//			ballOwner.throwBall();
+//			passtarget.getBall(ball);
+//			ballOwner = passtarget;
+//			// 패스 실패 시
+//			ballOwner.throwBall();
+//			passtarget x,y로 공의 위치 재설정
+//			ballOwner = null;
 		}
 	}
 
@@ -340,22 +452,38 @@ public class _Game {
 	// -------------------------------------------------------------------------------------------------------------------------------//
 
 	private void printScr() {
-		System.out.println(nTurn + "th Turn");
-		// test section start
-		// for (int i = 0; i < 6; i++) {
-		// System.out.println((char) ('a' + i) + ":(" + playerOfTeamA[i].x + "," +
-		// playerOfTeamA[i].y + ") \t"
-		// + (char) ('1' + i) + ":(" + playerOfTeamB[i].x + "," + playerOfTeamB[i].y +
-		// ")");
-		// }
-		if (ballOwner != null)
-			System.out.println("Ball owner : " + ballOwner.getId());
-		else
-			System.out.println("Ball owner : none");
-		// test section end
+
+		// test section
+
+		if (DEBUGMODE) {
+			System.out.println(nTurn + "th Turn");
+			for (int i = 0; i < 6; i++) {
+				System.out.println((char) ('a' + i) + "(" + i + ")" + ":(" + playerOfTeamA[i].x + ","
+						+ playerOfTeamA[i].y + ")  \t" + (char) ('a' + i) + "(" + i + ")" + ":(" + orderA.dx[i] + ","
+						+ orderA.dy[i] + ")  \t" + (char) ('a' + i) + "(" + (i) + ")" + ":(str:"
+						+ playerOfTeamA[i].getStrength() + ",pass:" + playerOfTeamA[i].getPass() + ",stm:"
+						+ playerOfTeamA[i].getStamina() + ")");
+			}
+			for (int i = 0; i < 6; i++) {
+				System.out.println((char) ('1' + i) + "(" + (i + 6) + ")" + ":(" + playerOfTeamB[i].x + ","
+						+ playerOfTeamB[i].y + ")  \t" + (char) ('1' + i) + "(" + (i + 6) + ")" + ":(" + orderB.dx[i]
+						+ "," + orderB.dy[i] + ")  \t" + (char) ('1' + i) + "(" + (i + 6) + ")" + ":(str:"
+						+ playerOfTeamB[i].getStrength() + ",pass:" + playerOfTeamB[i].getPass() + ",stm:"
+						+ playerOfTeamB[i].getStamina() + ")");
+
+			}
+
+			if (ballOwner != null)
+				System.out.println("Ball owner : " + ballOwner.getId());
+			else
+				System.out.println("Ball owner : none");
+		}
+
 		if (ballOwner == null) {
 			screen[ball.x][ball.y] = ball;
 		}
+
+		System.out.println("Score " + score_a + " : " + score_b);
 		System.out.println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%");
 		for (int i = 0; i < HEIGHT; i++) {
 			if (i < HEIGHT / 2 - 5 || i >= HEIGHT / 2 + 5)
@@ -388,6 +516,21 @@ public class _Game {
 	}
 
 	private int goalCheck() {// goal 아니면 -1, a팀의 골이면 1, b팀의 골이면 2
+		if (ballOwner != null) {
+			if (ballOwner.getId() >= 0 && ballOwner.getId() < 6) {
+				if (ballOwner.getX() == WIDTH - 1
+						&& (ballOwner.getY() >= HEIGHT / 2 - 5 && ballOwner.getY() < HEIGHT / 2 + 5)) {
+					score_a++;
+					return 1;
+				}
+			} else if (ballOwner.getId() >= 6 && ballOwner.getId() < 12) {
+				if (ballOwner.getX() == 0
+						&& (ballOwner.getY() >= HEIGHT / 2 - 5 && ballOwner.getY() < HEIGHT / 2 + 5)) {
+					score_b++;
+					return 2;
+				}
+			}
+		}
 		return -1;
 	}
 
@@ -409,8 +552,10 @@ public class _Game {
 	}
 
 	public static void main(String[] args) {
-		// waiting time �쟻�슜�븷 寃�!
+		// waiting time parsing
 		_Game game = new _Game();
+		Scanner sc = new Scanner(System.in);
+		sc.nextLine();
 		game.run();
 	}
 
